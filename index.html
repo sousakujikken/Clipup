@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Clipup Music2Movie Converter</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <div class="main-column">
+            <div class="tab-navigation">
+                <button class="tab-button active" data-target="#resource-tab" data-tab="resources">リソース</button>
+                <button class="tab-button" data-target="#effect-tab" data-tab="effects">エフェクト</button>
+            </div>
+            <div class="tab-content active" id="resource-tab">
+                <div class="resources-section">
+                <div class="music-selection">
+                    <label for="musicSelect">音楽ファイル:</label>
+                    <select id="musicSelect"></select>
+                </div>
+                <h3>リソース設定</h3>
+                <div id="resourceRows">
+                    <!-- リソース行のテンプレート -->
+                    <div class="resource-row">
+                        <div class="resource-type-toggle">
+                            <button class="toggle-button active" data-type="image">静止画</button>
+                            <button class="toggle-button" data-type="video">動画</button>
+                        </div>
+                        <select class="resource-select">
+                            <option value="">ファイルを選択</option>
+                        </select>
+                        <div class="duration-input">
+                            <label>継続時間(秒):</label>
+                            <input type="number" value="5" min="1" step="1">
+                        </div>
+                        <button class="delete-row-button">削除</button>
+                    </div>
+                </div>
+                <button id="addResourceButton" class="add-resource-button">リソース行を追加</button>
+                </div>
+                <button id="generateButton" class="generate-button" disabled>動画を生成</button>
+                <div id="progressContainer" class="progress-container" style="display: none;">
+                    <div class="progress-info">
+                        <span id="progressStage">処理中...</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div id="progressBar" class="progress-bar-fill"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-content" id="effect-tab">
+                <div class="effects-section">
+                    <h3>エフェクト設定</h3>
+                    <div class="placeholder-message">
+                        <p>トランジションやタイトルなどのエフェクト設定はこちらで行います。</p>
+                        <p>現在開発中ですので、しばらくお待ちください。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="side-column" id="dropZone">
+            <div class="preview-section">
+                <!-- <h3>プレビュー</h3> -->
+                <div class="preview-container">
+                    <div class="media-preview">
+                        <h4>メディアプレビュー</h4>
+                        <div class="preview-header">
+                            <h4 id="previewTitle">選択中のファイル</h4>
+                        </div>
+                        <div class="preview-content">
+                            <img class="media-element image" src="" alt="画像プレビュー" style="display: none;">
+                            <video class="media-element video"
+                                controls
+                                type="video/mp4"
+                                crossorigin="anonymous"
+                                disablePictureInPicture
+                                style="display: none;">
+                            </video>
+                        </div>
+                    </div>
+            <div class="audio-preview">
+                <h4>音楽プレビュー</h4>
+                <div class="preview-header">
+                    <div class="audio-file-name" id="audioPreviewTitle">選択中のファイル</div>
+                </div>
+                <audio id="audioPlayer" controls></audio>
+            </div>
+                </div>
+            </div>
+            <div class="file-library">
+                <h3>登録済みファイル</h3>
+                <div class="file-section">
+                    <h4>音楽ファイル</h4>
+                    <ul id="musicFileList" class="file-list"></ul>
+                </div>
+                <div class="file-section">
+                    <h4>静止画ファイル</h4>
+                    <ul id="imageFileList" class="file-list"></ul>
+                </div>
+                <div class="file-section">
+                    <h4>動画ファイル</h4>
+                    <ul id="videoFileList" class="file-list"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="renderer.js"></script>
+</body>
+</html>

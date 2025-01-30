@@ -1,0 +1,65 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Electron build output
+dist/
+build/
+release/
+*.app
+*.exe
+*.dmg
+
+# FFmpeg binaries and cache
+ffmpeg/
+*.ffmpeg
+ffmpeg.exe
+ffprobe.exe
+.ffmpeg-cache/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Debug files
+*.debug
+debug.log
+
+# Temporary files
+tmp/
+temp/
+
+# Application specific
+# Keep source icon files in git, but ignore generated ones
+icon.ico
+icon.icns
+build/icon.png
+
+# Application cache and user data
+cache/
+user-data/

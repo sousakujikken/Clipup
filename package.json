@@ -1,0 +1,45 @@
+{
+  "name": "clipup",
+  "version": "0.3.0",
+  "description": "",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "electron-builder"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "electron": "^28.1.0",
+    "fluent-ffmpeg": "^2.1.3"
+  },
+  "build": {
+    "appId": "com.github.sousakujikken.clipup",
+    "productName": "Clipup",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/*.{o,hprof,orig,pyc,pyo,rbc,swp}",
+      "!.git/**/*",
+      "!.vscode/**/*",
+      "!dist/**/*"
+    ],
+    "win": {
+      "icon": "icon.ico"
+    },
+    "mac": {
+      "icon": "icon.icns"
+    },
+    "linux": {
+      "icon": "build/icon.png"
+    }
+  },
+  "devDependencies": {
+    "electron-builder": "^25.1.8"
+  }
+}
