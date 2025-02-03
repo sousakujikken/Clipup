@@ -1,147 +1,138 @@
 # Clipup
 
-This is an Electron-based Music-to-Movie conversion tool. It allows you to easily create a video file with background music from an audio file and a video file.
-※ This application and documentation were primarily created using Claude 3.5 Sonnet and Deepseek v3.
+ElectronベースのMusic to Movie変換ツールです。音楽ファイルと動画ファイルから簡易的に音楽付き動画ファイルを作成することができます。
 
-## System Requirements
+※ このアプリケーション及びドキュメントは大部分をClaude 3.5 SonnetおよびDeepseek v3を用いて作成しました。
 
-- **OS Support**:
-  - Windows 10 or later
-  - macOS 10.13 or later
-  - Linux (Ubuntu 20.04+, Fedora 34+, or other modern distributions)
-- **FFmpeg**: Version 4.0 or later (Will be installed automatically if not present)
-- **Disk Space**: At least 500MB free space for installation
-- **Memory**: Minimum 4GB RAM recommended
+※ 2025/2/3 今の所インストーラー版は不具合が解消できていません。下記インストール方法に記載の手順でインストールしてください。
 
-## Installation
+## システム要件
+
+- **対応OS**:
+  - Windows 10以降
+  - macOS 10.13以降
+  - Linux (Ubuntu 20.04+, Fedora 34+, その他の最新ディストリビューション)
+- **FFmpeg**: バージョン4.0以降（未インストールの場合は自動的にインストールされます）
+- **ディスク容量**: インストールに500MB以上の空き容量が必要
+- **メモリ**: 4GB以上推奨
+
+## インストール方法
 
 ### Windows
 
-1. Download the latest `Clipup-Setup.exe` from the releases page
-2. Run the installer
-3. During first launch, if FFmpeg is not detected:
-   - The application will prompt to install FFmpeg
-   - Click "Yes" to allow automatic installation
-   - Administrator privileges will be required for FFmpeg installation
-
-Note: Windows may show a security warning when running the installer. This is normal as the application is not signed with a certificate. Click "More info" and then "Run anyway" to proceed.
+1. Gitをインストール（未インストールの場合）：[Git公式サイト](https://git-scm.com/downloads)
+2. Node.jsをインストール（推奨: 最新LTS版）：[Node.js公式サイト](https://nodejs.org/)
+3. コマンドプロンプトまたはPowerShellを開き、以下のコマンドを実行：
+   ```powershell
+   git clone https://github.com/sousakujikken/Clipup.git
+   cd Clipup
+   npm install
+   npm start
+   ```
 
 ### macOS
 
-1. Download the latest `Clipup.zip` from the releases page
-2. Extract the zip file
-3. Move Clipup.app to your Applications folder
-4. During first launch, if FFmpeg is not detected:
-   - The application will prompt to install FFmpeg
-   - Click "Yes" to allow automatic installation
-   - You will be prompted for your password to install FFmpeg
-
-Note: When first opening the app, macOS may show a security warning. To resolve this:
-1. Go to System Settings > Privacy & Security
-2. Scroll down to find the message about Clipup being blocked
-3. Click "Open Anyway"
-
-### Linux
-
-#### Ubuntu/Debian
-1. Download the latest `clipup.deb` from the releases page
-2. Install using:
+1. Gitをインストール（未インストールの場合）：
    ```bash
-   sudo dpkg -i clipup.deb
+   brew install git
    ```
-3. During first launch, if FFmpeg is not detected:
-   - The application will prompt to install FFmpeg
-   - Click "Yes" to allow automatic installation
-   - You will be prompted for your password to install FFmpeg
-
-#### Fedora/RHEL
-1. Download the latest `clipup.rpm` from the releases page
-2. Install using:
+2. Node.jsをインストール（推奨: 最新LTS版）：
    ```bash
-   sudo rpm -i clipup.rpm
+   brew install node
+   ```
+3. ターミナルを開き、以下のコマンドを実行：
+   ```bash
+   git clone https://github.com/sousakujikken/Clipup.git
+   cd Clipup
+   npm install
+   npm start
    ```
 
-#### Other Distributions
-1. Download the latest `clipup.AppImage` from the releases page
-2. Make it executable:
-   ```bash
-   chmod +x clipup.AppImage
-   ```
-3. Run the AppImage
+### Linux（Ubuntu/Debian/Fedoraなど）
 
-## Prerequisites
+1. Gitをインストール（未インストールの場合）：
+   ```bash
+   # Ubuntu/Debian系
+   sudo apt update && sudo apt install git -y
+   
+   # Fedora系
+   sudo dnf install git -y
+   ```
+2. Node.jsをインストール（推奨: 最新LTS版）：
+   ```bash
+   # Ubuntu/Debian系
+   curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+   sudo apt install -y nodejs
+   
+   # Fedora系
+   sudo dnf module install nodejs:latest
+   ```
+3. ターミナルを開き、以下のコマンドを実行：
+   ```bash
+   git clone https://github.com/sousakujikken/Clipup.git
+   cd Clipup
+   npm install
+   npm start
+   ```
+
+## 事前準備
 
 ### Windows
-- No additional prerequisites required
-- Chocolatey package manager will be installed automatically if needed for FFmpeg installation
+- GitおよびNode.jsのインストールが必要
 
 ### macOS
-- Homebrew package manager will be installed automatically if needed for FFmpeg installation
-- Command Line Tools for Xcode will be installed automatically if needed
+- Homebrewのインストールが推奨（未インストールの場合は[公式サイト](https://brew.sh/)を参照）
 
 ### Linux
-- Basic development tools (`build-essential` on Ubuntu/Debian)
-- `pkexec` or `sudo` for FFmpeg installation
-- Package manager specific to your distribution (apt, dnf, etc.)
+- 各ディストリビューションのパッケージマネージャーを利用してGitおよびNode.jsをインストール
 
-## Troubleshooting
+## トラブルシューティング
 
-### FFmpeg Installation Issues
+### npm installでエラーが発生する場合
+1. Node.jsのバージョンを確認（推奨: 最新LTS版）
+   ```bash
+   node -v
+   ```
+2. `node_modules`と`package-lock.json`を削除し、再インストールを試行：
+   ```bash
+   rm -rf node_modules package-lock.json
+   npm install
+   ```
 
-If automatic FFmpeg installation fails, you can install it manually:
+### FFmpegインストールの問題
+手動でインストールする場合：
 
 #### Windows
 ```powershell
-# Using Chocolatey
 choco install ffmpeg
 ```
 
 #### macOS
 ```bash
-# Using Homebrew
 brew install ffmpeg
 ```
 
 #### Linux
 ```bash
 # Ubuntu/Debian
-sudo apt update
-sudo apt install ffmpeg
+sudo apt update && sudo apt install ffmpeg
 
 # Fedora
 sudo dnf install ffmpeg
-
-# Arch Linux
-sudo pacman -S ffmpeg
 ```
 
-### Common Issues
+## サポート
 
-1. **Application won't start**
-   - Ensure you have sufficient disk space
-   - Check system requirements are met
-   - Try running as administrator (Windows) or with sudo (Linux)
+問題が発生した場合：
+1. 上記のトラブルシューティングセクションを確認
+2. GitHubの既存のissuesで類似の問題を確認
+3. 新しいissueを作成する際は以下を含めてください：
+   - OSのバージョン
+   - Node.jsのバージョン
+   - 問題の再現手順
+   - エラーメッセージ
 
-2. **FFmpeg not found after installation**
-   - Restart the application
-   - Check if FFmpeg is in system PATH
-   - Try manual installation steps above
-
-3. **Permission errors**
-   - Ensure you have write permissions in the application directory
-   - Run installer with administrator privileges
-
-## Support
-
-If you encounter any issues:
-1. Check the troubleshooting section above
-2. Look for similar issues in the GitHub issues
-3. Create a new issue with:
-   - Your OS version
-   - Application version
-   - Steps to reproduce the problem
-   - Any error messages
-
-## License
+## ライセンス
 
 ISC License
+
