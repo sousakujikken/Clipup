@@ -5,14 +5,18 @@ import { exec } from 'child_process';
 
 class FFmpegSetup {
   constructor() {
-    this.ffmpegPath = ffmpegStatic;
-    this.ffprobePath = ffprobeStatic.path; // 修正
+    this.ffmpegPath = ffmpegStatic; // ffmpeg-static を優先
+    this.ffprobePath = ffprobeStatic.path; // 修正済み
     this.minFFmpegVersion = '4.0';
+
+    // fluent-ffmpeg に ffmpeg-static のパスを適用
+    ffmpeg.setFfmpegPath(this.ffmpegPath);
+    ffmpeg.setFfprobePath(this.ffprobePath);
   }
 
   setup() {
     return new Promise((resolve, reject) => {
-      exec(`${JSON.stringify(this.ffmpegPath)} -version`, (err, stdout) => {
+      exec(`${this.ffmpegPath} -version`, (err, stdout) => { // JSON.stringify() 削除
         if (err) {
           console.error('FFmpegのバージョン確認に失敗しました:', err);
           return reject(new Error('FFmpegの初期化に失敗しました'));
