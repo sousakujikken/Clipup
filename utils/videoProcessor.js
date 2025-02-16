@@ -110,51 +110,80 @@ class VideoProcessor {
     });
   }
 
-  async createConcatenatedClip(inputPaths, outputPath, progressCallback) {
-    return new Promise((resolve, reject) => {
-      console.log(`結合クリップ作成: 入力数=${inputPaths.length}, 出力=${outputPath}`);
+async createConcatenatedClip(inputPaths, outputPath, progressCallback) {
+  return new Promise(async (resolve, reject) => {
+    console.log(`結合クリップ作成: 入力数=${inputPaths.length}, 出力=${outputPath}`);
 
-      const command = ffmpeg();
-      inputPaths.forEach(path => command.input(path));
+    // メディア情報の取得とログ出力
+    const mediaInfos = [];
+    for (const path of inputPaths) {
+      try {
+        const info = await this.getMediaInfo(path);
+        console.log(`メディア情報: ${path}`, info);
+        mediaInfos.push(info);
+      } catch (error) {
+        console.error(`メディア情報取得エラー: ${path}`, error);
+        reject(error);
+        return;
+      }
+    }
 
-      const filterInputs = inputPaths.map((_, i) => `[${i}:v]`).join('');
-      const filterComplex = `${filterInputs}concat=n=${inputPaths.length}:v=1:a=0[v]`;
+    // メディア情報の比較
+    const firstInfo = mediaInfos[0];
+    for (let i = 1; i < mediaInfos.length; i++) {
+      const info = mediaInfos[i];
+      if (info.width !== firstInfo.width || info.height !== firstInfo.height) {
+        console.error(`解像度が一致しません: ${inputPaths[0]} (${firstInfo.width}x${firstInfo.height}) と ${inputPaths[i]} (${info.width}x${info.height})`);
+        reject(new Error('解像度が一致しません'));
+        return;
+      }
+      if (info.fps !== firstInfo.fps) {
+        console.error(`フレームレートが一致しません: ${inputPaths[0]} (${firstInfo.fps}) と ${inputPaths[i]} (${info.fps})`);
+        reject(new Error('フレームレートが一致しません'));
+        return;
+      }
+    }
 
-      command
-        .complexFilter(filterComplex)
-        .outputOptions([
-          '-map', '[v]',
-          '-c:v', 'libx264',
-          '-preset', 'medium',
-          '-crf', '23',
-          '-pix_fmt', 'yuv420p'
-        ])
-        .output(outputPath)
-        .on('progress', progress => {
-          if (progressCallback) {
-            // 結合時は最初のクリップの長さを基準にする
-            const firstClipDuration = progress.duration || 30;
-            const percent = calculateProgress(progress, firstClipDuration);
-            progressCallback('clip-concatenation', 0, 1, {
-              currentFile: outputPath,
-              progress: percent,
-              totalFiles: inputPaths.length
-            });
-          }
-        })
-        .on('end', () => {
-          console.log(`結合クリップ作成完了: ${outputPath}`);
-          resolve(outputPath);
-        })
-        .on('error', (err) => {
-          console.error(`結合クリップ作成エラー: ${err.message}`);
-          reject(err);
-        });
+    const command = ffmpeg();
+    inputPaths.forEach(path => command.input(path));
 
-      command.run();
-    });
-  }
+    const filterInputs = inputPaths.map((_, i) => `[${i}:v]`).join('');
+    const filterComplex = `${filterInputs}concat=n=${inputPaths.length}:v=1:a=0[v]`;
 
+    command
+      .complexFilter(filterComplex)
+      .outputOptions([
+        '-map', '[v]',
+        '-c:v', 'libx264',
+        '-preset', 'medium',
+        '-crf', '23',
+        '-pix_fmt', 'yuv420p'
+      ])
+      .output(outputPath)
+      .on('progress', progress => {
+        if (progressCallback) {
+          // 結合時は最初のクリップの長さを基準にする
+          const firstClipDuration = progress.duration || 30;
+          const percent = calculateProgress(progress, firstClipDuration);
+          progressCallback('clip-concatenation', 0, 1, {
+            currentFile: outputPath,
+            progress: percent,
+            totalFiles: inputPaths.length
+          });
+        }
+      })
+      .on('end', () => {
+        console.log(`結合クリップ作成完了: ${outputPath}`);
+        resolve(outputPath);
+      })
+      .on('error', (err) => {
+        console.error(`結合クリップ作成エラー: ${err.message}`);
+        reject(err);
+      });
+
+    command.run();
+  });
+}
   async createFinalVideo(videoPath, audioPath, outputPath, audioDuration, progressCallback) {
     return new Promise(async (resolve, reject) => {
       try {
@@ -170,7 +199,7 @@ class VideoProcessor {
           .outputOptions([
             '-c:v', 'libx264',
             '-pix_fmt', 'yuv420p',
-            '-shortest',
+            // '-shortest',
             '-t', audioDuration.toString()
           ]);
 
