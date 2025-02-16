@@ -24,20 +24,20 @@ updateGenerateButtonState();
 let progressContainer; // スコープを外側に移動
 
 generateButton.addEventListener('click', async () => {
-  // 変数を先に宣言
   const musicPath = musicSelect.value;
   const resources = [];
   
   try {
-    // ボタンを無効化して多重クリックを防ぐ
+    // ボタンを無効化
     generateButton.disabled = true;
     generateButton.textContent = '生成中...';
     
-    // 必要なパラメータを検証
+    // 基本的なバリデーション
     if (!musicPath) {
       throw new Error('音楽ファイルが選択されていません');
     }
 
+    // リソースの収集
     const rows = resourceRows.querySelectorAll('.resource-row');
     rows.forEach(row => {
       const select = row.querySelector('.resource-select');
@@ -56,144 +56,71 @@ generateButton.addEventListener('click', async () => {
     if (resources.length === 0) {
       throw new Error('リソースが選択されていません');
     }
-    
-    // 進行状況表示の初期化
-    if (!progressContainer) {
-      progressContainer = document.createElement('div');
-      progressContainer.className = 'progress-container';
-      progressContainer.style.display = 'none';
-      
-      const progressInfo = document.createElement('div');
-      progressInfo.className = 'progress-info';
-      
-      const progressStage = document.createElement('span');
-      progressStage.id = 'progressStage';
-      progressStage.textContent = '処理中...';
-      
-      const progressPercent = document.createElement('span');
-      progressPercent.id = 'progressPercent';
-      progressPercent.textContent = '0%';
-      
-      progressInfo.appendChild(progressStage);
-      progressInfo.appendChild(progressPercent);
-      
-      const progressBarContainer = document.createElement('div');
-      progressBarContainer.className = 'progress-bar';
-      
-      const progressBarFill = document.createElement('div');
-      progressBarFill.id = 'progressBar';
-      progressBarFill.className = 'progress-bar-fill';
-      
-      progressBarContainer.appendChild(progressBarFill);
-      
-      progressContainer.appendChild(progressInfo);
-      progressContainer.appendChild(progressBarContainer);
-      
-      generateButton.parentNode.insertBefore(progressContainer, generateButton.nextSibling);
+
+    // プログレスコンテナの初期化
+    let progressContainer = document.querySelector('.progress-container');
+    if (progressContainer) {
+      progressContainer.remove();
     }
-    
+    progressContainer = initializeProgressContainer();
+    generateButton.parentNode.insertBefore(progressContainer, generateButton.nextSibling);
     progressContainer.style.display = 'block';
+
     const progressBar = document.getElementById('progressBar');
     const progressStage = document.getElementById('progressStage');
     const progressPercent = document.getElementById('progressPercent');
-    
-            // 進行状況表示の更新
-            const updateProgress = (stage, current, total, details) => {
-              console.log('Progress Update:', { stage, current, total, details });
-              
-              // 進捗情報を確実に取得
-              const percent = details?.progress || 0;
-              
-              // 進捗バーの更新
-              if (progressBar) {
-                // 進捗情報のデバッグ出力を強化
-                console.log('Progress Update Debug:', {
-                  stage,
-                  current,
-                  total,
-                  details,
-                  percent,
-                  elementId: progressBar.id,
-                  displayStyle: progressBar.style.display,
-                  visibility: progressBar.style.visibility,
-                  parentDisplay: progressBar.parentElement?.style.display,
-                  containerDisplay: progressContainer?.style.display
-                });
 
-                // 確実に進捗バーが表示されているか確認
-                progressContainer.style.display = 'block';
-                progressBar.style.display = 'block';
-                progressBar.style.visibility = 'visible';
+    // 進行状況を更新する関数
+    const updateProgress = (stage, current, total, details) => {
+      console.log('Progress Update:', { stage, current, total, details });
+      
+      if (!details) return;
 
-                // CSS アニメーションを一時的に無効化して即時反映
-                progressBar.style.transition = 'none';
-                requestAnimationFrame(() => {
-                  progressBar.style.width = `${percent}%`;
-                  // 次のフレームでアニメーションを再有効化
-                  requestAnimationFrame(() => {
-                    progressBar.style.transition = 'width 0.2s ease-in-out';
-                    // デバッグ情報を出力
-                    console.log('Progress Bar Update:', {
-                      width: progressBar.style.width,
-                      computedWidth: window.getComputedStyle(progressBar).width,
-                      percent: percent
-                    });
-                  });
-                });
-              }
-              
-              // ファイル名を抽出
-              const getFileName = (filePath) => {
-                if (!filePath) return '';
-                const parts = filePath.split(/[\/\\]/);
-                return parts[parts.length - 1];
-              };
-
-              // ステージに応じたメッセージを設定
-              let message = '';
-              switch (stage) {
-                case 'subclip-creation':
-                  const fileName = getFileName(details?.currentFile);
-                  message = `サブクリップ作成中 (${current + 1}/${total})${fileName ? ': ' + fileName : ''}`;
-                  break;
-                case 'clip-concatenation':
-                  message = `クリップ結合中${details?.totalClips ? ': ' + details.totalClips + '個のクリップを処理中' : ''}`;
-                  break;
-                case 'final-rendering':
-                  message = '最終動画レンダリング中';
-                  break;
-                default:
-                  message = '処理中...';
-              }
-
-              // UIの更新
-              if (progressStage) {
-                progressStage.textContent = message;
-              }
-              if (progressPercent) {
-                progressPercent.textContent = `${percent}%`;
-              }
-
-              console.log(`Progress Bar Updated: ${percent}%, Stage: ${stage}, Message: ${message}`);
-            };
-
-    // 進捗更新コールバック
-    const handleProgress = (stage, current, total, details) => {
-      console.log('Progress Handler:', {
-        stage,
-        current,
-        total,
-        details,
-        progressBar: progressBar?.id,
-        progressStage: progressStage?.id,
-        progressPercent: progressPercent?.id
-      });
-
-      if (details) {
-        updateProgress(stage, current, total, details);
-      } else {
-        console.warn('Progress details missing:', { stage, current, total });
+      // 進捗情報を取得
+      const percent = details.progress || 0;
+      
+      // 進捗バーの更新
+      if (progressBar) {
+        progressBar.style.transition = 'none';
+        requestAnimationFrame(() => {
+          progressBar.style.width = `${percent}%`;
+          requestAnimationFrame(() => {
+            progressBar.style.transition = 'width 0.2s ease-in-out';
+          });
+        });
       }
+      
+      // メッセージの設定
+      let message = '';
+      const getFileName = (filePath) => {
+        if (!filePath) return '';
+        const parts = filePath.split(/[\/\\]/);
+        return parts[parts.length - 1];
+      };
+
+      switch (stage) {
+        case 'subclip-creation':
+          const fileName = getFileName(details.currentFile);
+          message = `サブクリップ作成中 (${current + 1}/${total})${fileName ? ': ' + fileName : ''}`;
+          break;
+        case 'clip-concatenation':
+          message = `クリップ結合中${details.totalFiles ? ': ' + details.totalFiles + '個のクリップを処理中' : ''}`;
+          break;
+        case 'final-rendering':
+          message = '最終動画レンダリング中';
+          if (details.totalFrames && details.frames) {
+            message += ` (${details.frames}/${details.totalFrames} フレーム)`;
+          }
+          break;
+        default:
+          message = '処理中...';
+      }
+
+      // UIの更新
+      if (progressStage) progressStage.textContent = message;
+      if (progressPercent) progressPercent.textContent = `${percent}%`;
+
+      console.log(`Progress Bar Updated: ${percent}%, Stage: ${stage}, Message: ${message}`);
     };
 
     // 進捗更新用のユニークIDを生成
@@ -207,12 +134,13 @@ generateButton.addEventListener('click', async () => {
         progressPercent.textContent = data.error;
         throw new Error(data.error);
       }
-      console.log('Progress Event Data:', data);
+
       if (!data || !data.stage) {
         console.warn('Invalid progress data received');
         return;
       }
-      handleProgress(data.stage, data.current, data.total, data.details);
+
+      updateProgress(data.stage, data.current, data.total, data.details);
     });
 
     // 動画生成を実行
@@ -241,6 +169,7 @@ generateButton.addEventListener('click', async () => {
     } else {
       throw new Error(result.error || '動画の生成に失敗しました');
     }
+
   } catch (error) {
     console.error('動画生成エラー:', {
       message: error.message,
@@ -258,7 +187,6 @@ generateButton.addEventListener('click', async () => {
       3. 動画ファイルの形式がサポートされているか（MP4, WebM, MOV）
       4. 動画ファイルのコーデックがサポートされているか（H.264, VP8, VP9）`;
       
-      // 動画ファイルのメタデータを取得して詳細なエラー情報を表示
       try {
         const mediaInfo = await window.electronAPI.getMediaInfo(resources[0]?.path || '');
         errorMessage += `\n\nファイル情報:\n` +
@@ -272,14 +200,25 @@ generateButton.addEventListener('click', async () => {
     }
     
     showError(errorMessage);
+
   } finally {
     // ボタンの状態をリセット
     generateButton.disabled = false;
     generateButton.textContent = '動画を生成';
     
-    // 進行状況表示をクリア
+    // プログレスコンテナを非表示にするが、削除はしない
+    const progressContainer = document.querySelector('.progress-container');
     if (progressContainer) {
-      progressContainer.remove();
+      progressContainer.style.display = 'none';
+      
+      // プログレスバーの状態をリセット
+      const progressBar = progressContainer.querySelector('#progressBar');
+      const progressStage = progressContainer.querySelector('#progressStage');
+      const progressPercent = progressContainer.querySelector('#progressPercent');
+      
+      if (progressBar) progressBar.style.width = '0%';
+      if (progressStage) progressStage.textContent = '処理中...';
+      if (progressPercent) progressPercent.textContent = '0%';
     }
     
     updateGenerateButtonState();
@@ -622,12 +561,34 @@ document.addEventListener('click', async (event) => {
     if (selectedPath) {
       const selectedFile = [...imageFiles, ...videoFiles].find(f => f.path === selectedPath);
       if (selectedFile) {
+        // リソース行の要素を取得
+        const resourceRow = event.target.closest('.resource-row');
+        const activeType = resourceRow.querySelector('.toggle-button.active').dataset.type;
+        const durationInput = resourceRow.querySelector('.duration-input input');
+
+        // 動画が選択された場合、総フレーム数を取得して設定
+        if (activeType === 'video') {
+          try {
+            const mediaInfo = await window.electronAPI.getMediaInfo(selectedFile.path);
+            if (mediaInfo.frameCount) {
+              durationInput.value = mediaInfo.frameCount;
+            }
+          } catch (error) {
+            console.error('動画情報の取得に失敗しました:', error);
+          }
+        } else {
+          // 画像の場合はデフォルト値を5に設定
+          durationInput.value = 5;
+        }
+
         await showFilePreview(selectedFile);
         lastSelectedMedia = selectedFile;
+        updateGenerateButtonState();
       }
     }
   }
 });
+
 
 const ACCEPTED_MUSIC_TYPES = ['.mp3', '.wav'];
 const ACCEPTED_IMAGE_TYPES = ['.jpg', '.jpeg', '.png'];
@@ -998,92 +959,138 @@ function removeVideoFile(file) {
     saveHistory();
 }
 
-// リソース行の作成
+// リソース行の作成関数も更新
 function createResourceRow() {
-    const row = document.createElement('div');
-    row.className = 'resource-row';
-    
-    // タイプ切り替えボタン
-    const typeToggle = document.createElement('div');
-    typeToggle.className = 'resource-type-toggle';
-    
-    const imageButton = document.createElement('button');
-    imageButton.className = 'toggle-button active';
-    imageButton.dataset.type = 'image';
-    imageButton.textContent = '静止画';
-    
-    const videoButton = document.createElement('button');
-    videoButton.className = 'toggle-button';
-    videoButton.dataset.type = 'video';
-    videoButton.textContent = '動画';
-    
-    typeToggle.appendChild(imageButton);
-    typeToggle.appendChild(videoButton);
-    
-    // ファイル選択
-    const select = document.createElement('select');
-    select.className = 'resource-select';
-    select.innerHTML = '<option value="">ファイルを選択</option>';
-    imageFiles.forEach(file => {
-        const option = document.createElement('option');
-        option.value = file.path;
-        option.textContent = file.name;
-        select.appendChild(option);
-    });
-    
-    // 継続時間入力
-    const durationDiv = document.createElement('div');
-    durationDiv.className = 'duration-input';
-    
-    const durationLabel = document.createElement('label');
-    durationLabel.textContent = '継続時間(秒):';
-    
-    const durationInput = document.createElement('input');
-    durationInput.type = 'number';
-    durationInput.value = '5';
-    durationInput.min = '1';
-    durationInput.step = '1';
-    
-    durationDiv.appendChild(durationLabel);
-    durationDiv.appendChild(durationInput);
-    
-    // 削除ボタン
-    const deleteButton = document.createElement('button');
-    deleteButton.className = 'delete-row-button';
-    deleteButton.textContent = '削除';
-    
-    // イベントリスナーの設定
-    [imageButton, videoButton].forEach(button => {
-        button.addEventListener('click', () => {
-            typeToggle.querySelectorAll('.toggle-button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            button.classList.add('active');
-            select.value = ''; // 選択をリセット
-            const files = button.dataset.type === 'image' ? imageFiles : videoFiles;
-            select.innerHTML = '<option value="">ファイルを選択</option>';
-            files.forEach(file => {
-                const option = document.createElement('option');
-                option.value = file.path;
-                option.textContent = file.name;
-                select.appendChild(option);
-            });
-        });
-    });
-    
-    deleteButton.addEventListener('click', () => {
-        row.remove();
-        updateDeleteButtonsVisibility();
-        updateGenerateButtonState();
-    });
-    
-    select.addEventListener('change', updateGenerateButtonState);
-    
-    // 要素の追加
-    row.appendChild(typeToggle);
-    row.appendChild(select);
-    row.appendChild(durationDiv);
-    row.appendChild(deleteButton);
-    
-    return row;
+  const row = document.createElement('div');
+  row.className = 'resource-row';
+  
+  // タイプ切り替えボタン
+  const typeToggle = document.createElement('div');
+  typeToggle.className = 'resource-type-toggle';
+  
+  const imageButton = document.createElement('button');
+  imageButton.className = 'toggle-button active';
+  imageButton.dataset.type = 'image';
+  imageButton.textContent = '静止画';
+  
+  const videoButton = document.createElement('button');
+  videoButton.className = 'toggle-button';
+  videoButton.dataset.type = 'video';
+  videoButton.textContent = '動画';
+  
+  typeToggle.appendChild(imageButton);
+  typeToggle.appendChild(videoButton);
+  
+  // ファイル選択
+  const select = document.createElement('select');
+  select.className = 'resource-select';
+  select.innerHTML = '<option value="">ファイルを選択</option>';
+  imageFiles.forEach(file => {
+      const option = document.createElement('option');
+      option.value = file.path;
+      option.textContent = file.name;
+      select.appendChild(option);
+  });
+  
+  // 継続時間入力
+  const durationDiv = document.createElement('div');
+  durationDiv.className = 'duration-input';
+  
+  const durationLabel = document.createElement('label');
+  durationLabel.textContent = '継続時間(秒):';
+  
+  const durationInput = document.createElement('input');
+  durationInput.type = 'number';
+  durationInput.value = '5'; // 画像の場合のデフォルト値
+  durationInput.min = '1';
+  durationInput.step = '1';
+  
+  durationDiv.appendChild(durationLabel);
+  durationDiv.appendChild(durationInput);
+  
+  // 削除ボタン
+  const deleteButton = document.createElement('button');
+  deleteButton.className = 'delete-row-button';
+  deleteButton.textContent = '削除';
+  
+  // イベントリスナーの設定
+  [imageButton, videoButton].forEach(button => {
+      button.addEventListener('click', async () => {
+          typeToggle.querySelectorAll('.toggle-button').forEach(btn => {
+              btn.classList.remove('active');
+          });
+          button.classList.add('active');
+          
+          // 選択をリセット
+          select.value = '';
+          const files = button.dataset.type === 'image' ? imageFiles : videoFiles;
+          select.innerHTML = '<option value="">ファイルを選択</option>';
+          files.forEach(file => {
+              const option = document.createElement('option');
+              option.value = file.path;
+              option.textContent = file.name;
+              select.appendChild(option);
+          });
+
+          // ラベルとデフォルト値を更新
+          if (button.dataset.type === 'image') {
+              durationLabel.textContent = '継続時間(秒):';
+              durationInput.value = '5';
+          } else {
+              durationLabel.textContent = '継続フレーム数:';
+              durationInput.value = '1';
+          }
+      });
+  });
+  
+  deleteButton.addEventListener('click', () => {
+      row.remove();
+      updateDeleteButtonsVisibility();
+      updateGenerateButtonState();
+  });
+  
+  select.addEventListener('change', updateGenerateButtonState);
+  
+  // 要素の追加
+  row.appendChild(typeToggle);
+  row.appendChild(select);
+  row.appendChild(durationDiv);
+  row.appendChild(deleteButton);
+  
+  return row;
+}
+
+// progressContainer の初期化処理を関数として分離
+function initializeProgressContainer() {
+  const container = document.createElement('div');
+  container.className = 'progress-container';
+  container.style.display = 'none';
+  
+  const progressInfo = document.createElement('div');
+  progressInfo.className = 'progress-info';
+  
+  const progressStage = document.createElement('span');
+  progressStage.id = 'progressStage';
+  progressStage.textContent = '処理中...';
+  
+  const progressPercent = document.createElement('span');
+  progressPercent.id = 'progressPercent';
+  progressPercent.textContent = '0%';
+  
+  progressInfo.appendChild(progressStage);
+  progressInfo.appendChild(progressPercent);
+  
+  const progressBarContainer = document.createElement('div');
+  progressBarContainer.className = 'progress-bar';
+  
+  const progressBarFill = document.createElement('div');
+  progressBarFill.id = 'progressBar';
+  progressBarFill.className = 'progress-bar-fill';
+  
+  progressBarContainer.appendChild(progressBarFill);
+  
+  container.appendChild(progressInfo);
+  container.appendChild(progressBarContainer);
+  
+  return container;
 }

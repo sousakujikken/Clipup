@@ -8,14 +8,29 @@ class VideoProcessor {
     this.tempFiles = [];
   }
 
+  async getAudioDuration(filePath) {
+    return new Promise((resolve, reject) => {
+      ffmpeg.ffprobe(filePath, (err, metadata) => {
+        if (err) {
+          console.error('音声ファイル解析エラー:', err);
+          return reject(new Error(`音声ファイルの解析に失敗しました: ${err.message}`));
+        }
+  
+        if (!metadata || !metadata.format || !metadata.format.duration) {
+          return reject(new Error('音声ファイルの長さを取得できませんでした'));
+        }
+  
+        const duration = parseFloat(metadata.format.duration);
+        console.log(`音声ファイルの長さ: ${duration}秒`);
+        resolve(duration);
+      });
+    });
+  }
+  
   async getMediaInfo(filePath) {
     return new Promise((resolve, reject) => {
-      console.log('メディア情報の取得を開始:', filePath);
-      
-      ffmpeg.ffprobe(filePath, {
-        probesize: 50000000,
-        analyzeduration: 50000000
-      }, (err, metadata) => {
+      // ffprobe に -count_frames オプションを渡すことで、nb_read_frames を取得
+      ffmpeg.ffprobe(filePath, ['-count_frames'], (err, metadata) => {
         if (err) {
           console.error('FFprobeエラー詳細:', {
             error: err.message,
@@ -24,33 +39,39 @@ class VideoProcessor {
           });
           return reject(new Error(`メディア情報の取得に失敗しました: ${err.message}`));
         }
-
+  
         if (!metadata || !metadata.streams) {
           console.error('無効なメタデータ:', metadata);
           return reject(new Error('無効なメタデータ形式: ストリーム情報が見つかりません'));
         }
-
+  
         const videoStream = metadata.streams.find(s => s.codec_type === 'video');
         const audioStream = metadata.streams.find(s => s.codec_type === 'audio');
-
+  
         if (!videoStream && path.extname(filePath).toLowerCase() !== '.mp3') {
           console.warn('ビデオストリームが見つかりません。メタデータ:', metadata);
           return reject(new Error('有効なビデオストリームが見つかりません'));
         }
-
+  
         try {
+          // フレームレートは r_frame_rate 文字列を eval で計算
+          const fps = videoStream?.r_frame_rate ? eval(videoStream.r_frame_rate) : null;
+          const duration = parseFloat(metadata.format.duration) || 0;
+          // nb_read_frames が取得できればそれを使用、なければ duration * fps で算出
+          const frameCount = videoStream.nb_read_frames
+            ? parseInt(videoStream.nb_read_frames)
+            : (fps && duration ? Math.floor(fps * duration) : 0);
+  
           const result = {
-            duration: parseFloat(metadata.format.duration) || 0,
+            duration, // 秒単位
             width: videoStream ? parseInt(videoStream.width) || 0 : 0,
             height: videoStream ? parseInt(videoStream.height) || 0 : 0,
-            fps: videoStream?.r_frame_rate ? 
-              (typeof videoStream.r_frame_rate === 'string' ? 
-                eval(videoStream.r_frame_rate) : 
-                videoStream.r_frame_rate) : null,
+            fps,
+            frameCount,  // 総フレーム数
             video_codec: videoStream?.codec_name || 'none',
             audio_codec: audioStream?.codec_name || 'none'
           };
-
+  
           console.log('取得したメディア情報:', result);
           resolve(result);
         } catch (error) {
@@ -66,28 +87,33 @@ class VideoProcessor {
     return info.duration;
   }
 
-  async createSubClip(inputPath, outputPath, duration, progressCallback) {
+  async createSubClip(inputPath, outputPath, targetFrameCount, progressCallback) {
     return new Promise(async (resolve, reject) => {
       try {
-        const videoDuration = await this.getVideoDuration(inputPath);
-        const loopCount = Math.ceil(duration / videoDuration);
+        // 【変更】秒数ではなく、フレーム数で処理するため、入力動画のフレーム数を取得
+        const mediaInfo = await this.getMediaInfo(inputPath);
+        const inputFrameCount = mediaInfo.frameCount;
+        const loopCount = Math.ceil(targetFrameCount / inputFrameCount);
         
-        console.log(`サブクリップ作成: 入力=${inputPath}, 出力=${outputPath}, 目標時間=${duration}, ループ回数=${loopCount}`);
+        console.log(`サブクリップ作成: 入力=${inputPath}, 出力=${outputPath}, 目標フレーム数=${targetFrameCount}, ループ回数=${loopCount}`);
 
         const command = ffmpeg()
           .input(inputPath)
+          // 【変更】必要な分ループさせる
           .inputOptions([`-stream_loop ${loopCount - 1}`])
           .output(outputPath)
           .outputOptions([
             '-c:v', 'libx264',
             '-preset', 'medium',
             '-crf', '23',
-            '-t', duration.toString(),
+            // 【変更】秒数指定（-t）ではなく、フレーム数指定（-frames:v）に変更
+            '-frames:v', targetFrameCount.toString(),
             '-pix_fmt', 'yuv420p'
           ])
           .on('progress', progress => {
             if (progressCallback) {
-              const percent = calculateProgress(progress, duration);
+              // 【注意】calculateProgressも秒数→フレーム数対応に変更が必要
+              const percent = calculateProgress(progress, targetFrameCount);
               progressCallback('subclip-creation', 0, 1, {
                 currentFile: inputPath,
                 progress: percent
@@ -110,132 +136,138 @@ class VideoProcessor {
     });
   }
 
-async createConcatenatedClip(inputPaths, outputPath, progressCallback) {
-  return new Promise(async (resolve, reject) => {
-    console.log(`結合クリップ作成: 入力数=${inputPaths.length}, 出力=${outputPath}`);
+  async createConcatenatedClip(inputPaths, outputPath, progressCallback) {
+    return new Promise(async (resolve, reject) => {
+      console.log(`結合クリップ作成: 入力数=${inputPaths.length}, 出力=${outputPath}`);
 
-    // メディア情報の取得とログ出力
-    const mediaInfos = [];
-    for (const path of inputPaths) {
-      try {
-        const info = await this.getMediaInfo(path);
-        console.log(`メディア情報: ${path}`, info);
-        mediaInfos.push(info);
-      } catch (error) {
-        console.error(`メディア情報取得エラー: ${path}`, error);
-        reject(error);
-        return;
-      }
-    }
-
-    // メディア情報の比較
-    const firstInfo = mediaInfos[0];
-    for (let i = 1; i < mediaInfos.length; i++) {
-      const info = mediaInfos[i];
-      if (info.width !== firstInfo.width || info.height !== firstInfo.height) {
-        console.error(`解像度が一致しません: ${inputPaths[0]} (${firstInfo.width}x${firstInfo.height}) と ${inputPaths[i]} (${info.width}x${info.height})`);
-        reject(new Error('解像度が一致しません'));
-        return;
-      }
-      if (info.fps !== firstInfo.fps) {
-        console.error(`フレームレートが一致しません: ${inputPaths[0]} (${firstInfo.fps}) と ${inputPaths[i]} (${info.fps})`);
-        reject(new Error('フレームレートが一致しません'));
-        return;
-      }
-    }
-
-    const command = ffmpeg();
-    inputPaths.forEach(path => command.input(path));
-
-    const filterInputs = inputPaths.map((_, i) => `[${i}:v]`).join('');
-    const filterComplex = `${filterInputs}concat=n=${inputPaths.length}:v=1:a=0[v]`;
-
-    command
-      .complexFilter(filterComplex)
-      .outputOptions([
-        '-map', '[v]',
-        '-c:v', 'libx264',
-        '-preset', 'medium',
-        '-crf', '23',
-        '-pix_fmt', 'yuv420p'
-      ])
-      .output(outputPath)
-      .on('progress', progress => {
-        if (progressCallback) {
-          // 結合時は最初のクリップの長さを基準にする
-          const firstClipDuration = progress.duration || 30;
-          const percent = calculateProgress(progress, firstClipDuration);
-          progressCallback('clip-concatenation', 0, 1, {
-            currentFile: outputPath,
-            progress: percent,
-            totalFiles: inputPaths.length
-          });
+      // メディア情報の取得とログ出力
+      const mediaInfos = [];
+      for (const filePath of inputPaths) {
+        try {
+          const info = await this.getMediaInfo(filePath);
+          console.log(`メディア情報: ${filePath}`, info);
+          mediaInfos.push(info);
+        } catch (error) {
+          console.error(`メディア情報取得エラー: ${filePath}`, error);
+          reject(error);
+          return;
         }
-      })
-      .on('end', () => {
-        console.log(`結合クリップ作成完了: ${outputPath}`);
-        resolve(outputPath);
-      })
-      .on('error', (err) => {
-        console.error(`結合クリップ作成エラー: ${err.message}`);
-        reject(err);
-      });
+      }
 
-    command.run();
-  });
-}
+      // メディア情報の比較
+      const firstInfo = mediaInfos[0];
+      for (let i = 1; i < mediaInfos.length; i++) {
+        const info = mediaInfos[i];
+        if (info.width !== firstInfo.width || info.height !== firstInfo.height) {
+          console.error(`解像度が一致しません: ${inputPaths[0]} (${firstInfo.width}x${firstInfo.height}) と ${inputPaths[i]} (${info.width}x${info.height})`);
+          reject(new Error('解像度が一致しません'));
+          return;
+        }
+        if (info.fps !== firstInfo.fps) {
+          console.error(`フレームレートが一致しません: ${inputPaths[0]} (${firstInfo.fps}) と ${inputPaths[i]} (${info.fps})`);
+          reject(new Error('フレームレートが一致しません'));
+          return;
+        }
+      }
+
+      const command = ffmpeg();
+      inputPaths.forEach(filePath => command.input(filePath));
+
+      const filterInputs = inputPaths.map((_, i) => `[${i}:v]`).join('');
+      const filterComplex = `${filterInputs}concat=n=${inputPaths.length}:v=1:a=0[v]`;
+
+      command
+        .complexFilter(filterComplex)
+        .outputOptions([
+          '-map', '[v]',
+          '-c:v', 'libx264',
+          '-preset', 'medium',
+          '-crf', '23',
+          '-pix_fmt', 'yuv420p'
+        ])
+        .output(outputPath)
+        .on('progress', progress => {
+          if (progressCallback) {
+            // 結合時は最初のクリップの長さを基準にする
+            // ※必要に応じて進捗計算も見直してください
+            const firstClipDuration = progress.duration || 30;
+            const percent = calculateProgress(progress, firstClipDuration);
+            progressCallback('clip-concatenation', 0, 1, {
+              currentFile: outputPath,
+              progress: percent,
+              totalFiles: inputPaths.length
+            });
+          }
+        })
+        .on('end', () => {
+          console.log(`結合クリップ作成完了: ${outputPath}`);
+          resolve(outputPath);
+        })
+        .on('error', (err) => {
+          console.error(`結合クリップ作成エラー: ${err.message}`);
+          reject(err);
+        });
+
+      command.run();
+    });
+  }
+
   async createFinalVideo(videoPath, audioPath, outputPath, audioDuration, progressCallback) {
     return new Promise(async (resolve, reject) => {
-      try {
-        console.log(`最終動画作成: 動画=${videoPath}, 音声=${audioPath}, 出力=${outputPath}`);
+        try {
+            console.log(`最終動画作成: 動画=${videoPath}, 音声=${audioPath}, 出力=${outputPath}`);
 
-        const videoInfo = await this.getMediaInfo(videoPath);
-        const hasAudio = videoInfo.audio_codec !== 'none';
+            // 動画情報を取得して総フレーム数を計算
+            const videoInfo = await this.getMediaInfo(videoPath);
+            const totalFrames = Math.ceil(audioDuration * videoInfo.fps);
+            const hasAudio = videoInfo.audio_codec !== 'none';
 
-        const command = ffmpeg()
-          .input(videoPath)
-          .inputOptions(['-stream_loop -1'])
-          .input(audioPath)
-          .outputOptions([
-            '-c:v', 'libx264',
-            '-pix_fmt', 'yuv420p',
-            // '-shortest',
-            '-t', audioDuration.toString()
-          ]);
+            console.log(`最終動画情報: フレームレート=${videoInfo.fps}fps, 総フレーム数=${totalFrames}`);
 
-        if (hasAudio) {
-          command.outputOptions([
-            '-c:a', 'aac',
-            '-b:a', '192k'
-          ]);
-        }
+            const command = ffmpeg()
+                .input(videoPath)
+                .inputOptions(['-stream_loop -1'])
+                .input(audioPath)
+                .outputOptions([
+                    '-c:v', 'libx264',
+                    '-pix_fmt', 'yuv420p',
+                    '-t', audioDuration.toString()
+                ]);
 
-        command
-          .output(outputPath)
-          .on('progress', progress => {
-            if (progressCallback) {
-              progressCallback('final-rendering', 0, 1, {
-                currentFile: outputPath,
-                progress: calculateProgress(progress, audioDuration),
-                audioDuration: audioDuration,
-                frames: progress.frames || 0
-              });
+            if (hasAudio) {
+                command.outputOptions([
+                    '-c:a', 'aac',
+                    '-b:a', '192k'
+                ]);
             }
-          })
-          .on('end', () => {
-            console.log(`最終動画作成完了: ${outputPath}`);
-            resolve(outputPath);
-          })
-          .on('error', (err) => {
-            console.error(`最終動画作成エラー: ${err.message}`);
-            reject(err);
-          });
 
-        command.run();
-      } catch (error) {
-        console.error('最終動画作成中にエラーが発生しました:', error);
-        reject(error);
-      }
+            command
+                .output(outputPath)
+                .on('progress', progress => {
+                    if (progressCallback) {
+                        progressCallback('final-rendering', 0, 1, {
+                            currentFile: outputPath,
+                            progress: calculateProgress(progress, audioDuration),
+                            audioDuration: audioDuration,
+                            frames: progress.frames || 0,
+                            totalFrames: totalFrames // 総フレーム数を追加
+                        });
+                    }
+                })
+                .on('end', () => {
+                    console.log(`最終動画作成完了: ${outputPath}`);
+                    resolve(outputPath);
+                })
+                .on('error', (err) => {
+                    console.error(`最終動画作成エラー: ${err.message}`);
+                    reject(err);
+                });
+
+            command.run();
+        } catch (error) {
+            console.error('最終動画作成中にエラーが発生しました:', error);
+            reject(error);
+        }
     });
   }
 
@@ -259,24 +291,22 @@ async createConcatenatedClip(inputPaths, outputPath, progressCallback) {
             break;
           case 'final-rendering':
             // 最終レンダリング: 40-100%
-            // FFmpegの進行状況から実際のフレーム進捗を計算
             const totalFrames = details.audioDuration * 30; // 想定される総フレーム数（30fpsと仮定）
             const currentFrames = details.frames || 0;
             const frameProgress = Math.min(currentFrames / totalFrames, 1);
-            // フレーム進捗を40-100%の範囲に変換
             overallProgress = 40 + (frameProgress * 60);
             break;
           default:
             overallProgress = 0;
         }
         
-        // 進行状況をコールバックで通知
         progressCallback(stage, current, total, {
           ...details,
           progress: Math.min(Math.round(overallProgress), 100)
         });
       }
     };
+    
     try {
       console.log('受信したパラメータ:', { musicPath, resources });
       
@@ -284,7 +314,7 @@ async createConcatenatedClip(inputPaths, outputPath, progressCallback) {
       if (!musicPath || !resources || resources.length === 0) {
         throw new Error('音楽ファイルとリソースが必要です');
       }
-
+  
       if (!fs.existsSync(musicPath)) {
         throw new Error(`音楽ファイルが見つかりません: ${musicPath}`);
       }
@@ -313,12 +343,12 @@ async createConcatenatedClip(inputPaths, outputPath, progressCallback) {
         }
 
         if (!Number.isFinite(resource.duration) || resource.duration <= 0) {
-          throw new Error(`無効な継続時間です: ${resource.duration}`);
+          throw new Error(`無効な継続時間（またはフレーム数）です: ${resource.duration}`);
         }
       }
 
-      const audioDuration = await this.getVideoDuration(musicPath);
-      console.log('音声の長さ:', audioDuration);
+      const audioDuration = await this.getAudioDuration(musicPath);
+      console.log('音声の長さ（秒）:', audioDuration);
 
       // 1. サブクリップの作成
       const subClips = [];
@@ -329,15 +359,17 @@ async createConcatenatedClip(inputPaths, outputPath, progressCallback) {
 
         try {
           if (resource.type === 'video') {
+            // 【変更】動画リソースは秒数ではなくフレーム数指定となる
             await this.createSubClip(
               resource.path,
               tempPath,
-              resource.duration,
+              resource.duration, // ※ここは「必要なフレーム数」として指定する
               (stage, current, total, details) => {
                 updateProgress(stage, i, resources.length, details);
               }
             );
           } else {
+            // 画像の場合は従来どおり秒数指定
             await new Promise((resolve, reject) => {
               ffmpeg()
                 .input(resource.path)

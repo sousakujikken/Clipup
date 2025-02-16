@@ -1,24 +1,25 @@
 // FFmpegの進捗情報を解析・正規化するユーティリティ
-export function calculateProgress(progress, totalDuration) {
+export function calculateProgress(progress, totalFrames) {
   console.log('Progress Info:', {
     timemark: progress.timemark,
     percent: progress.percent,
     frames: progress.frames,
     currentFps: progress.currentFps,
-    targetDuration: totalDuration
+    totalFrames: totalFrames
   });
 
   let percent = 0;
 
   // フレーム数ベースでの進捗計算
-  if (progress.frames && progress.currentFps && totalDuration) {
-    const expectedFrames = progress.currentFps * totalDuration;
-    percent = (progress.frames / expectedFrames) * 100;
+  if (progress.frames && totalFrames) {
+    percent = (progress.frames / totalFrames) * 100;
   } 
   // 時間ベースでの進捗計算
-  else if (progress.timemark && totalDuration) {
+  else if (progress.timemark && totalFrames) {
     const currentTime = parseTimemarkToSeconds(progress.timemark);
-    percent = (currentTime / totalDuration) * 100;
+    const fps = totalFrames / currentTime; // 総フレーム数と経過時間からfpsを推定
+    const currentFrame = currentTime * fps;
+    percent = (currentFrame / totalFrames) * 100;
   }
   // フォールバック: FFmpegが提供する進捗情報を使用
   else {

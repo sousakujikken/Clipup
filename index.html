@@ -14,29 +14,29 @@
             </div>
             <div class="tab-content active" id="resource-tab">
                 <div class="resources-section">
-                <div class="music-selection">
-                    <label for="musicSelect">音楽ファイル:</label>
-                    <select id="musicSelect"></select>
-                </div>
-                <h3>リソース設定</h3>
-                <div id="resourceRows">
-                    <!-- リソース行のテンプレート -->
-                    <div class="resource-row">
-                        <div class="resource-type-toggle">
-                            <button class="toggle-button active" data-type="image">静止画</button>
-                            <button class="toggle-button" data-type="video">動画</button>
-                        </div>
-                        <select class="resource-select">
-                            <option value="">ファイルを選択</option>
-                        </select>
-                        <div class="duration-input">
-                            <label>継続時間(秒):</label>
-                            <input type="number" value="5" min="1" step="1">
-                        </div>
-                        <button class="delete-row-button">削除</button>
+                    <div class="music-selection">
+                        <label for="musicSelect">音楽ファイル:</label>
+                        <select id="musicSelect"></select>
                     </div>
-                </div>
-                <button id="addResourceButton" class="add-resource-button">リソース行を追加</button>
+                    <h3>リソース設定</h3>
+                    <div id="resourceRows">
+                        <!-- リソース行のテンプレート -->
+                        <div class="resource-row">
+                            <div class="resource-type-toggle">
+                                <button class="toggle-button active" data-type="image">静止画</button>
+                                <button class="toggle-button" data-type="video">動画</button>
+                            </div>
+                            <select class="resource-select">
+                                <option value="">ファイルを選択</option>
+                            </select>
+                            <div class="duration-input">
+                                <label>継続フレーム数:</label>
+                                <input type="number" class="frame-count-input" value="1" min="1" step="1">
+                            </div>
+                            <button class="delete-row-button">削除</button>
+                        </div>
+                    </div>
+                    <button id="addResourceButton" class="add-resource-button">リソース行を追加</button>
                 </div>
                 <button id="generateButton" class="generate-button" disabled>動画を生成</button>
                 <div id="progressContainer" class="progress-container" style="display: none;">
@@ -61,7 +61,6 @@
         </div>
         <div class="side-column" id="dropZone">
             <div class="preview-section">
-                <!-- <h3>プレビュー</h3> -->
                 <div class="preview-container">
                     <div class="media-preview">
                         <h4>メディアプレビュー</h4>
@@ -78,14 +77,19 @@
                                 style="display: none;">
                             </video>
                         </div>
+                        <!-- 動画の詳細情報表示 -->
+                        <div class="video-details" style="display: none;">
+                            <p>フレームレート: <span id="frameRate"></span> fps</p>
+                            <p>総フレーム数: <span id="totalFrames"></span></p>
+                        </div>
                     </div>
-            <div class="audio-preview">
-                <h4>音楽プレビュー</h4>
-                <div class="preview-header">
-                    <div class="audio-file-name" id="audioPreviewTitle">選択中のファイル</div>
-                </div>
-                <audio id="audioPlayer" controls></audio>
-            </div>
+                    <div class="audio-preview">
+                        <h4>音楽プレビュー</h4>
+                        <div class="preview-header">
+                            <div class="audio-file-name" id="audioPreviewTitle">選択中のファイル</div>
+                        </div>
+                        <audio id="audioPlayer" controls></audio>
+                    </div>
                 </div>
             </div>
             <div class="file-library">
