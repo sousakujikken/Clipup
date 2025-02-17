@@ -113,10 +113,11 @@ class VideoProcessor {
           .on('progress', progress => {
             if (progressCallback) {
               // 【注意】calculateProgressも秒数→フレーム数対応に変更が必要
-              const percent = calculateProgress(progress, targetFrameCount);
-              progressCallback('subclip-creation', 0, 1, {
+              const stage = 'subclip-creation';
+              const calculatedProgress = calculateProgress(progress, targetFrameCount, stage);
+              progressCallback(stage, 0, 1, {
                 currentFile: inputPath,
-                progress: percent
+                progress: calculatedProgress
               });
             }
           })
@@ -143,16 +144,10 @@ class VideoProcessor {
       // メディア情報の取得とログ出力
       const mediaInfos = [];
       for (const filePath of inputPaths) {
-        try {
-          const info = await this.getMediaInfo(filePath);
-          console.log(`メディア情報: ${filePath}`, info);
-          mediaInfos.push(info);
-        } catch (error) {
-          console.error(`メディア情報取得エラー: ${filePath}`, error);
-          reject(error);
-          return;
-        }
+        const info = await this.getMediaInfo(filePath);
+        mediaInfos.push(info);
       }
+      const totalFrames = mediaInfos.reduce((sum, info) => sum + info.frameCount, 0);
 
       // メディア情報の比較
       const firstInfo = mediaInfos[0];
@@ -190,9 +185,10 @@ class VideoProcessor {
           if (progressCallback) {
             // 結合時は最初のクリップの長さを基準にする
             // ※必要に応じて進捗計算も見直してください
+            const stage = 'clip-concatenation';
             const firstClipDuration = progress.duration || 30;
-            const percent = calculateProgress(progress, firstClipDuration);
-            progressCallback('clip-concatenation', 0, 1, {
+            const percent = calculateProgress(progress, firstClipDuration, stage);
+            progressCallback(stage, 0, 1, {
               currentFile: outputPath,
               progress: percent,
               totalFiles: inputPaths.length
@@ -245,13 +241,15 @@ class VideoProcessor {
                 .output(outputPath)
                 .on('progress', progress => {
                     if (progressCallback) {
-                        progressCallback('final-rendering', 0, 1, {
-                            currentFile: outputPath,
-                            progress: calculateProgress(progress, audioDuration),
-                            audioDuration: audioDuration,
-                            frames: progress.frames || 0,
-                            totalFrames: totalFrames // 総フレーム数を追加
-                        });
+                      const stage = 'final-rendering';
+                      const calculatedProgress = calculateProgress(progress, totalFrames, stage);
+                      progressCallback(stage, 0, 1, {
+                        currentFile: outputPath,
+                        progress: calculatedProgress,
+                        audioDuration: audioDuration,
+                        frames: progress.frames || 0,
+                        totalFrames: totalFrames
+                      });
                     }
                 })
                 .on('end', () => {
@@ -278,11 +276,11 @@ class VideoProcessor {
         // 各段階の進行状況を計算
         let overallProgress;
         const stepProgress = details.progress / 100;
-
+  
         switch (stage) {
           case 'subclip-creation':
             // サブクリップ作成: 0-20%
-            const subclipWeight = 20 / resources.length; // 各サブクリップの重み
+            const subclipWeight = 20 / resources.length;
             overallProgress = (current * subclipWeight) + (stepProgress * subclipWeight);
             break;
           case 'clip-concatenation':
@@ -291,10 +289,14 @@ class VideoProcessor {
             break;
           case 'final-rendering':
             // 最終レンダリング: 40-100%
-            const totalFrames = details.audioDuration * 30; // 想定される総フレーム数（30fpsと仮定）
-            const currentFrames = details.frames || 0;
-            const frameProgress = Math.min(currentFrames / totalFrames, 1);
-            overallProgress = 40 + (frameProgress * 60);
+            if (details.totalFrames && details.frames) {
+              // totalFramesが提供されている場合はそれを使用
+              const frameProgress = Math.min(details.frames / details.totalFrames, 1);
+              overallProgress = 40 + (frameProgress * 60);
+            } else {
+              // フォールバック: 進捗の直接使用
+              overallProgress = 40 + (stepProgress * 60);
+            }
             break;
           default:
             overallProgress = 0;
