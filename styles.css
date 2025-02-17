@@ -83,7 +83,7 @@ body {
 }
 
 .side-column {
-    width: 400px;
+    width: 420px;
     background-color: white;
     padding: 24px;
     border-radius: 12px;
@@ -108,7 +108,7 @@ body {
 }
 
 .side-column {
-    width: 400px;
+    width: 420px;
     background-color: white;
     padding: 12px;
     border-radius: 12px;
@@ -360,6 +360,40 @@ body {
 .media-element.video.active {
     display: block;
     opacity: 1;
+}
+
+.video-details {
+    margin-top: 8px;
+    padding: 8px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+    font-size: 0.9em;
+}
+
+.details-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.detail-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background-color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+}
+
+.detail-label {
+    color: #6c757d;
+    font-size: 0.9em;
+}
+
+.detail-item span:last-child {
+    color: #495057;
 }
 
 @keyframes fadeIn {

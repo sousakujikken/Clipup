@@ -78,9 +78,25 @@
                             </video>
                         </div>
                         <!-- 動画の詳細情報表示 -->
-                        <div class="video-details" style="display: none;">
-                            <p>フレームレート: <span id="frameRate"></span> fps</p>
-                            <p>総フレーム数: <span id="totalFrames"></span></p>
+                        <div class="video-details">
+                            <div class="details-list">
+                                <span class="detail-item">
+                                    <span class="detail-label">解像度:</span>
+                                    <span id="resolution">-</span>
+                                </span>
+                                <span class="detail-item">
+                                    <span class="detail-label">時間:</span>
+                                    <span id="duration">-</span>
+                                </span>
+                                <span class="detail-item">
+                                    <span class="detail-label">FPS:</span>
+                                    <span id="frameRate">-</span>
+                                </span>
+                                <span class="detail-item">
+                                    <span class="detail-label">Frames:</span>
+                                    <span id="totalFrames">-</span>
+                                </span>
+                            </div>
                         </div>
                     </div>
                     <div class="audio-preview">

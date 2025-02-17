@@ -300,23 +300,29 @@ function initPreview() {
 // メディアプレビュー表示切り替え
 function showMediaPreview(mediaType) {
   const mediaElements = document.querySelectorAll('.media-element');
+  // video-details要素の取得を関数内で行う
+  const videoDetails = document.querySelector('.video-details');
+  
   mediaElements.forEach(el => {
-    if (el.classList.contains(mediaType)) {
-      el.style.display = 'block';
-      el.classList.add('active');
-    } else {
-      el.style.display = 'none';
-      el.classList.remove('active');
-      if (el.tagName === 'VIDEO' && typeof el.pause === 'function') {
-        el.pause();
-        // srcをクリアしないように変更
+      if (el.classList.contains(mediaType)) {
+          el.style.display = 'block';
+          el.classList.add('active');
+      } else {
+          el.style.display = 'none';
+          el.classList.remove('active');
+          if (el.tagName === 'VIDEO' && typeof el.pause === 'function') {
+              el.pause();
+          }
       }
-    }
   });
   
-  // プレビューコンテナの表示状態を更新
+  // 動画の場合のみ詳細情報を表示
+  if (videoDetails) {
+      videoDetails.style.display = mediaType === 'video' ? 'block' : 'none';
+  }
+  
   if (previewContainer) {
-    previewContainer.classList.add('active');
+      previewContainer.classList.add('active');
   }
 }
 
@@ -380,6 +386,21 @@ async function showFilePreview(file) {
         }
         throw error;
       });
+
+      // 動画情報の表示を更新
+      const resolution = document.getElementById('resolution');
+      const duration = document.getElementById('duration');
+      const frameRate = document.getElementById('frameRate');
+      const totalFrames = document.getElementById('totalFrames');
+
+      if (resolution) resolution.textContent = `${mediaInfo.width || 0}×${mediaInfo.height || 0}`;
+      if (duration) duration.textContent = `${(mediaInfo.duration || 0).toFixed(1)}s`;
+      if (frameRate) frameRate.textContent = `${Math.round(mediaInfo.fps || 0)}`;
+      if (totalFrames) totalFrames.textContent = `${mediaInfo.frameCount || 0}`;
+
+      // video-details要素を表示
+      const videoDetails = document.querySelector('.video-details');
+      if (videoDetails) videoDetails.style.display = 'block';
 
       // ビデオコーデックのみチェック
       if (mediaInfo.video_codec && !['h264', 'vp8', 'vp9'].includes(mediaInfo.video_codec.toLowerCase())) {
